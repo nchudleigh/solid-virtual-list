@@ -1,4 +1,4 @@
-import { createSignal, JSX, onMount } from "solid-js";
+import { createSignal, For, JSX, onMount } from "solid-js";
 
 export function VirtualList<T>(props: {
   data: T[];
@@ -72,7 +72,7 @@ export function VirtualList<T>(props: {
         }px;`}
       >
         <div style={`${STYLE_CONTENT} top:${start() * props.rowHeight}px;`}>
-          {selection().map(props.renderRow)}
+          <For each={selection()}>{(row) => props.renderRow(row)}</For>
         </div>
       </div>
     </div>
