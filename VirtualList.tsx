@@ -1,4 +1,4 @@
-import { createSignal, For, JSX, onMount } from "solid-js";
+import { batch, createSignal, For, JSX, onMount } from "solid-js";
 
 export function VirtualList<T>(props: {
   data: T[];
@@ -11,44 +11,59 @@ export function VirtualList<T>(props: {
   let rootElement: JSX.Element;
   let innerElement: JSX.Element;
 
-  const [offset, setOffset] = createSignal(0);
-  const [height, setHeight] = createSignal(0);
+  const [height, setHeight] = createSignal<number>(0);
+  const [rowCount, setRowCount] = createSignal<number>(0);
+
+  const [offset, setOffset] = createSignal<number>(0);
+  const [start, setStart] = createSignal<number>(0);
+  const [end, setEnd] = createSignal<number>(0);
+  const [selection, setSelection] = createSignal<T[]>([]);
 
   // Ensure that the height of the container is always set to the offset height
   // of the root element.
   const resize = () => {
-    if (height() !== rootElement.offsetHeight)
+    if (height() !== rootElement.offsetHeight) {
       setHeight(rootElement.offsetHeight);
+      setRowCount(getRowCount());
+    }
   };
 
-  const start = () => {
-    let result = offset() / props.rowHeight;
+  const getStart = () => {
+    let result = Number((offset() / props.rowHeight).toFixed(0));
     result = Math.max(0, result - (result % props.overscanCount));
-
     return result;
   };
 
-  const visibleRowCount = () => {
-    let result = height() / props.rowHeight + props.overscanCount;
+  const getRowCount = () => {
+    let result =
+      Number((height() / props.rowHeight).toFixed(0)) + props.overscanCount;
     return result;
   };
 
   // last visible + overscan row index
-  const end = () => {
-    let result = start() + 1 + visibleRowCount();
+  const getEnd = () => {
+    let result = start() + 1 + rowCount();
     return result;
   };
 
-  const handleScroll = () => {
-    setOffset(rootElement.scrollTop);
+  const tick = () => {
+    batch(() => {
+      setOffset(rootElement.scrollTop);
+      setStart(getStart());
+      setEnd(getEnd());
+      setSelection(props.data.slice(start(), end()));
+    });
   };
 
-  const selection = () => {
-    return props.data.slice(start(), end());
+  const handleScroll = () => {
+    if (offset() != rootElement.scrollTop) {
+      tick();
+    }
   };
 
   onMount(() => {
     resize();
+    tick();
     rootElement.addEventListener("resize", resize);
   });
 
